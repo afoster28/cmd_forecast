@@ -3,6 +3,7 @@
 ## Commodity Forecasting
 
 Author: Adam Foster
+
 Supervisor: Marcin Chlebus
 
 This the repo for commodity return forecasting. It encompasses the model, input data, results, reference data and articles and any other thesis-related content. Documenting these components allows for reproducibility of results and acts as a centralised reference point for this thesis.
