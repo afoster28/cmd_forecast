@@ -1,0 +1,13 @@
+yfinance
+pip install yfinance
+Crude oil: CL=F
+
+fredapi
+pip install fredapi
+https://pypi.org/project/fredapi/
+https://analyzingalpha.com/fred-api-python
+WTI: DCOILWTICO
+Brent: DCOILBRENTEU
+HH: MHHNGSP
+TTF: PNGASEUUSDM
+
