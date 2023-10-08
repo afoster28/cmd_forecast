@@ -2,6 +2,9 @@
 
 ## Commodity Forecasting
 
+Author: Adam Foster
+Supervisor: Marcin Chlebus
+
 This the repo for commodity return forecasting. It encompasses the model, input data, results, reference data and articles and any other thesis-related content. Documenting these components allows for reproducibility of results and acts as a centralised reference point for this thesis.
 
 Commodity markets have been experiencing severe fluctuations over the last several years as a result of numerous geopolitical events and changing economic conditions. Considering the more recent moves would be useful in assessing model effectiveness. In addition, commodities is an asset class that receives less attention that other more material ones like equities, FX, rates, etc.
