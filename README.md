@@ -8,7 +8,7 @@ Supervisor: Marcin Chlebus
 
 This the repo for commodity return forecasting. It encompasses the model, input data, results, reference data and articles and any other thesis-related content. Documenting these components allows for reproducibility of results and acts as a centralised reference point for this thesis.
 
-Commodity markets have been experiencing severe fluctuations over the last several years as a result of numerous geopolitical events and changing economic conditions. Considering the more recent moves would be useful in assessing model effectiveness. In addition, commodities is an asset class that receives less attention that other more material ones like equities, FX, rates, etc.
+Commodity markets have been experiencing severe fluctuations over the last several years as a result of numerous geopolitical events and changing economic conditions. Considering the more recent moves would be useful in assessing model effectiveness. In addition, commodities is an asset class that receives less attention in the literature that other more material ones like equities, FX, rates, etc. Some analysis has been done on various GARCH models for some commodities vs simple supervised machine learning models like SVR or analysis specific to one type of ML model. All such papers omit most of 2022 and 2023 during which there was significant volatility.
 
 ## Tech
 
@@ -43,9 +43,11 @@ The output of each model will consist of a bounded forecast of each commodity se
 ### 08/10/23
 
 - Collect crude oil time series
+- Set up git repo
+- Set up core infra, ensuring reproducibility
 - Perform basic data cleaning & feature engineering
 - Split into train-test
-- Implement GARCH
+- Implement the most basic GARCH
 
 ### Up to 08/10/23
 
