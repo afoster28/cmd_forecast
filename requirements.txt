@@ -5,3 +5,4 @@ jupyterlab-pygments==0.2.2
 notebook==6.5.4
 numpy==1.24.3
 pandas==2.0.1
+traitlets==5.9.0

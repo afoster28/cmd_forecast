@@ -18,7 +18,7 @@ Please make sure you have all usual dependencies installed on your system. The m
 2. Enter `venv`: `source venv/bin/activate` on Linux or `venv\Scripts\activate.bat` on Windows
 3. Upgrade your `pip`: `pip install --upgrade pip`
 4. Install dependencies from the requirements file: `pip install -r requirements.txt`
-5. You're good to open the Jupyter Notebook IDE of your choice. Be sure to use select Python version from inside the `venv` you just created when prompted by `ipykernel` package.
+5. Open the Jupyter Notebook IDE of your choice. Select the Python version from inside the `venv` you just created when prompted by `ipykernel` package.
 
 ## Scope
 
