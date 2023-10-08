@@ -10,6 +10,16 @@ Commodity markets have been experiencing severe fluctuations over the last sever
 
 The models will be coded in Python.
 
+### Running the Code
+
+Please make sure you have all usual dependencies installed on your system. The most important ones include `python`, `pip` and `ipykernel`. If you're using _Visual Studio Code_ for development, you should be prompted to install them automatically. Next, follow this process:
+
+1. Create the virtual environment: `python -m venv venv`
+2. Enter `venv`: `source venv/bin/activate` on Linux or `venv\Scripts\activate.bat` on Windows
+3. Upgrade your `pip`: `pip install --upgrade pip`
+4. Install dependencies from the requirements file: `pip install -r requirements.txt`
+5. You're good to open the Jupyter Notebook IDE of your choice. Be sure to use select Python version from inside the `venv` you just created when prompted by `ipykernel` package.
+
 ## Scope
 
 The paper will be the design, implementation and subsequent comparison of several types of forecasting models applied to energy commodity returns based on spot prices/front month contracts, specifically crude oil and natural gas.
