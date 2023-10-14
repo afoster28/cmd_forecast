@@ -1,14 +1,14 @@
 # cmd_forecast
 
-## Commodity Forecasting
+## Commodity Forecasting for Trading Strategies
 
 Author: Adam Foster
 
 Supervisor: Marcin Chlebus
 
-This the repo for commodity return forecasting. It encompasses the model, input data, results, reference data and articles and any other thesis-related content. Documenting these components allows for reproducibility of results and acts as a centralised reference point for this thesis.
+This is the repo for commodity return forecasting and its application in systematic trading strategies. It encompasses the model, input data, results, reference data and articles and any other thesis-related content. Documenting these components allows for reproducibility of results and acts as a centralised reference point for this thesis.
 
-Commodity markets have been experiencing severe fluctuations over the last several years as a result of numerous geopolitical events and changing economic conditions. Considering the more recent moves would be useful in assessing model effectiveness. In addition, commodities is an asset class that receives less attention in the literature that other more material ones like equities, FX, rates, etc. Some analysis has been done on various GARCH models for some commodities vs simple supervised machine learning models like SVR or analysis specific to one type of ML model. All such papers omit most of 2022 and 2023 during which there was significant volatility.
+Commodity markets have been experiencing severe fluctuations over the past several years as a result of numerous geopolitical events and changing economic conditions. Considering the more recent moves would be useful in assessing model effectiveness. In addition, commodities is an asset class that receives less attention in the literature that other more material and liquid ones like equities, FX, rates, etc. Some analysis has been done for commodities using various GARCH models, supervised machine learning models like SVR. Most such papers end with comparative analysis across the models or new methodology for improving predictions. They also omit most of 2022 and 2023 during which there was significant volatility. There is little extension of such prediction to more practical use cases, like trading strategies.
 
 ## Tech
 
@@ -26,7 +26,7 @@ Please make sure you have all usual dependencies installed on your system. The m
 
 ## Scope
 
-The paper will be the design, implementation and subsequent comparison of several types of forecasting models applied to energy commodity returns based on spot prices/front month contracts, specifically crude oil and natural gas.
+The paper will be the design, implementation and subsequent comparison of several types of forecasting models applied to a selection of systematic trading strategies focusing on energy commodity returns based on spot prices/front month contracts, specifically crude oil and natural gas.
 
 GARCH and its variants will be used given its prevalence in financial asset forecasting. It considers the autoregressive and volatility-dependent nature of commodity returns.
 
@@ -38,6 +38,8 @@ Finally, the two-factor Gabillon model may be employed. The model constructs a t
 
 The output of each model will consist of a bounded forecast of each commodity series and quantification of the error vs the actual series in the test set.
 
+Contrarian and pair trading strategies will then be employed to make use of the forecasts and assessed ratios, such as Sharpe.
+
 ## Schedule
 
 ### 08/10/23
@@ -48,6 +50,7 @@ The output of each model will consist of a bounded forecast of each commodity se
 - Perform basic data cleaning & feature engineering
 - Split into train-test
 - Implement the most basic GARCH
+- Describe additional use case of prediction: investment strategies
 
 ### Up to 08/10/23
 
