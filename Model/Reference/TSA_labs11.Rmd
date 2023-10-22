@@ -1,0 +1,479 @@
+---
+title: "Time Series Analysis Spring 2023"
+subtitle: "11. GARCH models"
+author: "Maciej Świtała"
+date: "11/05/2023"
+output: 
+  html_document:
+    theme: spacelab
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo    = TRUE, 
+                      cache   = FALSE,
+                      message = FALSE, 
+                      warning = FALSE)
+options(scipen = 10)
+```
+
+# Loading packages
+
+```{r}
+library(tidyverse)
+library(xts) # e.g. xts objects
+library(fBasics) # e.g. basicStats()
+library(tseries)# e.g. jarque.bera.test()
+# library(car) # e.g. durbinWatsonTest()
+library(FinTS) # e.g. ArchTest()
+library(fGarch) # e.g. garchFit()
+library(quantmod) # e.g. getSymbol()
+```
+
+If necessary, first install them with the `install.packages()` function.
+
+Lets load additional function defined which will be used to to easily compare information criteria for ARCH and GARCH models.
+
+```{r}
+source("functions/compare_ICs_GARCH.R")
+```
+
+# Stylized facts      
+
+Lets import the data with prices of SP500 directly from Yahoo! Finance by the `getSymbols()` function from the `quantmod` package. We need to know a correct ticker. For the world indices please refer to: https://finance.yahoo.com/world-indices. 
+
+We will work today with `^GSPC`, ie. with the S&P500 index.
+
+```{r}
+SP500 <- 
+  getSymbols(Symbols = "^GSPC",             
+             from = "1970-01-01", 
+             to = "2019-05-07",   
+             auto.assign = FALSE)
+```
+
+Let's verify the structure:
+```{r}
+head(SP500)
+tail(SP500)
+str(SP500)
+```
+
+We will include only the adjustted close price (Adjusted) and change its name to SP500.
+```{r}
+SP500 <- SP500[, 6]
+names(SP500) <- "SP500"
+```
+
+Also, we will add log-returns to the data
+```{r}
+SP500$r <- diff.xts(log(SP500$SP500))
+```
+
+Finally, we limit our data to days since the beginning of 2000:
+```{r}
+SP500 <- SP500["2000/",] 
+```
+
+Now, let's plot the close price 
+```{r}
+plot(SP500$SP500,
+     col = "blue",
+     major.ticks = "years", 
+     grid.ticks.on = "years",
+     grid.ticks.lty = 3,
+     main = "Daily close price of SP500")
+```
+
+... and it's log-returns:
+```{r}
+plot(SP500$r, 
+     col = "red",
+     major.ticks = "years", 
+     grid.ticks.on = "years",
+     main = "Log-returns of SP500")
+```
+
+Let's also plot the ACF function of log-returns:
+```{r}
+acf(SP500$r, 
+    lag.max = 36, 
+    na.action = na.pass,
+    ylim = c(-0.1,0.1), # we rescale the vertical axis
+    col = "darkblue", 
+    lwd = 7, 
+    main = "ACF of log-returns of SP500")
+```
+
+As we see, values of the ACF function indicate some autoregressive/MA relations among returns which can be used to build an ARIMA model.
+
+Now, let's also see the ACF values for for the **squared** log-returns:
+```{r}
+acf(SP500$r ^ 2, 
+    lag.max = 36, 
+    na.action = na.pass,
+    ylim = c(0,0.5), # we rescale the vertical axis
+    col = "darkblue", 
+    lwd = 7, 
+    main = "ACF of SQUARED log-returns of SP500")
+```
+
+This in turn indicates some autoregressive relations among **squared** returns (actually their ralized variance!) which can be used to build a (G)ARCH model.
+
+Do log-returns follow a normal distribution?
+```{r}
+basicStats(SP500$r)
+```
+
+Skewness is negative and we also observe strong excess kurtosis.
+
+Let's see whether it is also confirmed by the histogram:
+```{r}
+tibble(r = as.numeric(SP500$r)) %>%
+  ggplot(aes(r)) +
+  geom_histogram(aes(y =..density..),
+                 colour = "black", 
+                 fill = "pink") +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(SP500$r), 
+                            sd = sd(SP500$r))) +
+  theme_bw() + 
+  labs(
+    title = "Density of the SPP500 log-returns", 
+    y = "", x = "",
+    caption = "source: own calculations"
+  )
+```
+
+As we can see, the distribution of the returns is **highly leptokurtic**.
+
+Let's also examine the Jarque-Bera statistic:
+```{r}
+jarque.bera.test(SP500$r)
+```
+
+The null hypothesis about normality strongly rejected!
+
+Finally, let's verify existence of ARCH effects among log-returns. The ARCH test is based on the autocorrelation of **squared** returns.
+
+```{r}
+ArchTest(SP500$r,  # here we use a vector of returns as input
+         lags = 5) # and maximum order of ARCH effect
+```
+
+The null hypothesis about lack of ARCH effects strongly rejected!
+
+
+# Modelling
+
+Now, we will find the most attractive GARCH(q, p) model. 
+
+## ARCH vs. GARCH models
+
+### ARCH(1)
+
+```{r}
+k.arch1 <- garchFit(formula = ~ garch(1, 0), # GARCH(q, p)
+                    # formula describing the mean and variance equation 
+                    # of the ARMA-GARCH - we assume that returns
+                    # follow an ARCH(1) process
+                    data = SP500$r,
+                    # conditional distribution of errors
+                    cond.dist = "norm", 
+                    # if we don't want to see the history of iterations
+                    trace = FALSE) 
+```
+
+Summary of results and some diagnostic tests:
+```{r}
+summary(k.arch1)
+```
+
+The parameters are denoted by the following symbols:
+
+* mu - constant term in the mean equation
+* omega - constant term in the variance equation
+* alpha1 - arch1 parameter in the variance equation
+
+If the intercept in the mean equation of the model above is not significant at 5% level, we can drop it.
+```{r}
+k.arch1a <- garchFit(~garch(1, 0), 
+                     data = SP500$r,
+                     # remove intercept term in the mean equation
+                     include.mean = FALSE,
+                     # conditional distribution of errors
+                     cond.dist = "norm",
+                     trace = FALSE)
+```
+
+Again, summary of results and some diagnostic tests:
+```{r}
+summary(k.arch1a)
+```
+
+Now, let's examine squares of standardized residuals. To do this we can use the `plot()` function which helps plot automatically several parts of the results. Calling the `plot()` function with the object of class `fGARCH` will enter the interactive mode which offers a selection of 13 plots:
+
+```{}
+Make a plot selection (or 0 to exit): 
+
+ 1:   Time Series                                 
+ 2:   Conditional SD                           
+ 3:   Series with 2 Conditional SD Superimposed   
+ 4:   ACF of Observations                      
+ 5:   ACF of Squared Observations                 
+ 6:   Cross Correlation                        
+ 7:   Residuals                                   
+ 8:   Conditional SDs                          
+ 9:   Standardized Residuals                     
+10:   ACF of Standardized Residuals            
+11:   ACF of Squared Standardized Residuals      
+12:   Cross Correlation between r^2 and r      
+13:   QQ-Plot of Standardized Residuals          
+```
+
+First, let's see all of them:
+```{r}
+for (i in 1:13) plot(k.arch1a, which = i)
+```
+
+If you call `plot(k.arch1a)` in the console - remember to quit by pressing ESC before you continue!
+
+For now, most interesting for us are:
+```{}
+10: ACF of Standardized Residuals,
+11: ACF of Squared Standardized Residuals; 
+2: Conditional SD
+```
+
+Hence, let's call the `plot()` function again:
+```{r}
+plot(k.arch1a, which = 10)
+plot(k.arch1a, which = 11)
+plot(k.arch1a, which = 2)
+```
+
+The conclusion is that squared residuals still have significant ACF for lags 2-10.
+
+### ARCH(5)
+
+Lets try if ARCH(5) is enough to catch this phenomenon:
+```{r}
+k.arch5 <- garchFit(~garch(5, 0),
+                    data = SP500$r,
+                    include.mean = TRUE,
+                    cond.dist = "norm", 
+                    trace = FALSE) 
+summary(k.arch5)
+```
+
+All parameters are significant. The Ljung-box tests for R and R^2 show there is still autocorrelation.
+
+Let's plot the ACF of standardized residuals and standardized squared residuals (plots 10 and 11).
+```{r}
+plot(k.arch5, which = 10)
+plot(k.arch5, which = 11)
+```
+
+The lags 3-5, 8, 10 in ACF for squared residuals seem to be still significant.
+
+### ARCH(10)
+
+Let's now estimate the ARCH(10) model:
+```{r}
+k.arch10 <- garchFit(~garch(10, 0),
+                     data = SP500$r,
+                     include.mean = TRUE,
+                     cond.dist = "norm", 
+                     trace = FALSE) 
+summary(k.arch10)
+```
+
+Again all parameters are significant at 5% level. The Ljung-box test for R^2 shows there is no more autocorrelation between the current and past  standardized **squared** residuals.
+
+Lets plot the ACF of standardized residuals and standardized squared residuals (plots 10 and 11).
+
+```{r}
+plot(k.arch10, which = 10)
+plot(k.arch10, which = 11)
+```
+
+It looks like no further extension of the **conditional variance** equation is needed. However, we can consider adding some AR part in the **mean** equation (we will do it later).
+
+### GARCH(1,1)
+
+Let's now compare the last model with GARCH(1,1).
+```{r}
+k.garch11 <- garchFit(~garch(1, 1),
+                      data = SP500$r,
+                      include.mean = TRUE,
+                      cond.dist = "norm", 
+                      trace = FALSE) 
+summary(k.garch11)
+```
+
+All parameters are significant. The Ljung-Box test for R^2 does not show autocorrelation at 5% level between the current and past standardized squared residuals (variance).
+
+Let's plot the ACF of standardized residuals and standardized squared residuals (plots 10 and 11).
+
+```{r}
+plot(k.garch11, which = 10)
+plot(k.garch11, which = 11)
+```
+
+ACF for R^2 of order 2 seems to be on the border of significance.
+
+Hence, let's check the higher order model of GARCH(2,1).
+
+### GARCH(2,1)
+
+```{r}
+k.garch21 <- garchFit(~ garch(2, 1),
+                      data = SP500$r,
+                      include.mean = TRUE,
+                      cond.dist = "norm",
+                      trace = FALSE)
+summary(k.garch21)
+```
+
+All parameters are significant. The Ljung-box test for R^2 shows there is 
+no autocorrelation between the current and past standardized squared residuals.
+
+Again, let's plot the ACF of standardized residuals and standardized squared residuals (plots 10 and 11).
+
+```{r}
+plot(k.garch21, which = 10)
+plot(k.garch21, which = 11)
+```
+
+The **conditional variance** equation seems to be complete, however the ACF plot of residuals indicates that we may still improve the model by adding AR components in the **mean** equation.
+
+### AR(5)-GARCH(2,1)
+
+Let's add the AR(5) model into the mean equation:
+```{r}
+k.ar5garch21 <- garchFit(~arma(5, 0) + garch(2, 1),
+                         data = SP500$r,
+                         include.mean = TRUE,
+                         cond.dist = "norm",
+                         trace = FALSE)
+summary(k.ar5garch21)
+```
+
+The AR1, AR2 and AR5 parameters are significant. The Ljung-box test for R^2 shows there is no more autocorrelation between the current and past standardized squared residuals. Similarly, there is no autocorrelation among returns after adding AR part now.
+
+Again, let's plot the ACF of standardized residuals and standardized squared residuals (plots 10 and 11).
+
+```{r}
+plot(k.ar5garch21, which = 10)
+plot(k.ar5garch21, which = 11)
+```
+
+Both ACF figures show no significant lags.
+
+### AR(5)-GARCH(1,1)
+Let's reestimate GARCH(1,1) and ARCH(10) with AR(5) part:
+```{r}
+k.ar5garch11 <- garchFit(~arma(5, 0) + garch(1, 1),
+                         data = SP500$r,
+                         include.mean = TRUE,
+                         cond.dist = "norm",
+                         trace = FALSE)
+summary(k.ar5garch11)
+```
+
+### AR(5)-ARCH(10)
+```{r}
+k.ar5arch10 <- garchFit(~arma(5, 0) + garch(10, 0),
+                         data = SP500$r,
+                         include.mean = TRUE,
+                         cond.dist = "norm",
+                         trace = FALSE)
+summary(k.ar5arch10)
+```
+
+## Comparison
+Which model has most favourable information criteria AIC and SBC? 
+
+To answer this question we will use the external function `compare_ICs_GARCH()` which is located in the `functions/compare_ICs_GARCH.R` file. It requires a list of names of existing (G)ARCH model results as an argument.
+
+```{r}
+compare_ICs_GARCH(c("k.arch1", "k.arch1a", "k.arch5", "k.arch10", 
+                    "k.garch11", "k.garch21", "k.ar5garch21",
+                    "k.ar5garch11", "k.ar5arch10"))
+```
+
+Most criteria give the same result: up to some point all consequtive models are better than the previous ones and finally AR(5)-GARCH(2,1) is the most attractive (according to all criteria).
+
+## Diagnostics
+Now, let's assume that the final model is AR(5)-GARCH(2,1). 
+
+The questions we can ask are the following:
+
+* Do standardized residuals follow normal distribution? 
+* Are standardized residuals a realization of the white noise process?
+* Are **squared standardized residuals** a realization of the white noise process?
+
+Lets remind the summary of the model and JB test result:
+```{r}
+summary(k.ar5garch21)
+```
+
+Lets also apply the JB test "manually". Standardized residuals are residuals divided by conditional stdev. Hence, we have to extract from the object with the model two elements: 1) residuals, 2) estimates of the conditional variance function.
+
+Let's see the structure of the object:
+```{r}
+str(k.ar5garch21)
+```
+
+Hence, the appropriate elements are: `@residuals` and `@h.t`.
+
+Finally, we hace calculate standardized residuals:
+```{r}
+stdres <- k.ar5garch21@residuals/sqrt(k.ar5garch21@h.t)
+```
+
+and apply the Jarque-Bera test:
+```{r}
+jarque.bera.test(stdres)
+```
+
+The result is exactly the same as above. Normality of standardized residuals is strongly rejected. This is confirmed by the histogram as well:
+
+```{r}
+tibble(stdres = stdres) %>%
+  ggplot(aes(stdres)) +
+  geom_histogram(aes(y =..density..),
+                 colour = "black", 
+                 fill = "pink") +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(stdres), 
+                            sd = sd(stdres))) +
+  theme_bw() + 
+  labs(
+    title = "Density of standardized residuals of the AR(5)-GARCH(2,1) model", 
+    y = "", x = "",
+    caption = "source: own calculations"
+  )
+```
+
+
+# Exercises 11
+
+Perform similar analysis for any other time series downloaded from Yahoo! Finance service.
+
+## Exercise 11.1
+Get the data for a selected asset. Compute log-returns. Present the data on the plot
+
+## Exercise 11.2
+Check normality of returns using a formal test. Test for autocorrelation of returns and squared returns of the analyzed asset.
+
+## Exercise 11.3
+Find the best GARCH(q,p) model (possibly with AR or/and MA component added).
+What criteria did you use for model selection? Does the model pass all the diagnostic checks?
+
+## Exercise 11.4
+For a finally selected model check if its standardized residuals follow a normal distribution and are not autocorrelated.

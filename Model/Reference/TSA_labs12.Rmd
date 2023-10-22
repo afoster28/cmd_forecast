@@ -1,0 +1,487 @@
+---
+title: "Time Series Analysis Spring 2023"
+subtitle: "12. Extensions of GARCH Models"
+author: "Maciej Świtała"
+date: "18/05/2022"
+output: 
+  html_document:
+    theme: spacelab
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo    = TRUE, 
+                      cache   = TRUE,
+                      message = FALSE, 
+                      warning = FALSE)
+options(scipen = 10)
+```
+
+# Packages and data
+
+Lets load all needed packages
+
+```{r cache = F}
+library(tidyverse)
+library(xts)
+library(tseries)# e.g. jarque.bera.test()
+library(car) # e.g. durbinWatsonTest()
+library(fBasics) # e.g. basicStats()
+library(fGarch) # e.g. garchFit()
+library(rugarch) # e.g. ugarchfit()
+```
+
+If necessary, install the new package we will use today:
+```{r eval = F}
+install.packages("rugarch")
+```
+
+A gentle introduction to the `rugarch` package and a detailed description of all models available in it are presented in this vignette: http://cran.r-project.org/web/packages/rugarch/vignettes/Introduction_to_the_rugarch_package.pdf
+
+Additional materials:
+
+* http://www.unstarched.net/r-examples/rugarch/a-short-introduction-to-the-rugarch-package/
+* Tsay (2015)
+
+Let's also load the workspace from `labs11`:
+```{r}
+load("objects/workspace_labs11.RData")
+```
+
+Let's load additional functions which help  easily compare ICs for GARCH models:
+```{r}
+source("functions/compare_ICs_GARCH.R")
+source("functions/compare_ICs_ugarchfit.R")
+```
+
+We should remind ourselves the comparison of models estimated last time:
+```{r}
+compare_ICs_GARCH(c("k.arch1", "k.arch1a", "k.arch5", "k.arch10", 
+                    "k.garch11", "k.garch21", "k.ar5garch21",
+                    "k.ar5garch11", "k.ar5arch10"))
+```
+
+The AR(5)-GARCH(2,1) was best fitting to the data.
+
+
+# GARCH extensions
+
+## The EGARCH model
+
+Let's examine whether conditional variance reacts asymmetrically to the news arriving to the market. Below estimation of the AR(5)-EGARCH(2,1) model.
+
+Advantages of the `ugarchfit()` from the `rugarch` package:
+
+- in some applications more flexible than garchFit 
+- allows also for extensions
+- allows to add restrictions on parameters
+
+Here, first we have to define a model specification:
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "eGARCH", 
+                                         garchOrder = c(2, 1)),
+                   # sGARCH would stand for standard GARCH model
+                   # mean equation - lets use AR(5) as previously
+                   mean.model = list(armaOrder = c(5, 0), 
+                                     include.mean = TRUE), 
+                   # assumed distribution of errors
+                   distribution.model = "norm")
+```
+
+The `ugarchfit()` function doesn't accept missing values.
+```{r}
+any(is.na(SP500$r))
+```
+
+If there were any, in case of returns we can replace any missings with 0 (if no return, then
+price did not change).
+
+```{r}
+SP500$r[is.na(SP500$r)] <- 0
+```
+
+and estimate the model:
+```{r}
+k.ar5egarch21 <- ugarchfit(spec = spec, 
+                           data = SP500$r)
+```
+
+Now, we can see the results:
+```{r}
+k.ar5egarch21
+```
+
+The AR2 to AR5 are not statistically significant!
+
+Let's remove them and estimate a simpler model AR(1)-EGARCH(2,1):
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "eGARCH", 
+                                         garchOrder = c(2, 1)),
+                   # sGARCH would stand for standard GARCH model
+                   # mean equation - lets use AR(1) as previously
+                   mean.model = list(armaOrder = c(1, 0), 
+                                     include.mean = TRUE), 
+                   # assumed distribution of errors
+                   distribution.model = "norm")
+```
+
+Now, we estimate the model:
+```{r}
+k.ar1egarch21 <- ugarchfit(spec = spec, 
+                           data = SP500$r)
+```
+
+An finally we can examine the results:
+```{r}
+k.ar1egarch21
+```
+
+Now (almost) all the parameters are statistically significant.
+
+Coefficient `alpha1` is the asymmetry term of EGARCH model (measuring the leverage effect). For further details see the package vignette (eq. 14, page 19, https://cran.r-project.org/web/packages/rugarch/vignettes/Introduction_to_the_rugarch_package.pdf)
+
+It is negative and significant, so the asymmetry is found!
+
+No further autocorrelation in R and R^2, no further ARCH effects.
+
+The Nyblom stability test verifies the null that all parameters or each parameter separately are stable over time (no structural breaks in the model). If test statistic is greater than the critical value, the null is rejected.
+
+So here we reject the stability jointly (4.6282 > 2.11), but cannot reject for any parameter (stat < 0.47).
+
+The Sign Bias Test verifies the null hypothesis if there is still some asymmetric reaction of variance of residuals to shocks. If null not rejected - the asymmetry has been captured correctly in the estimated model. The model does not require higher order. 
+
+Again, like in the case of `fGarch` class objects, we can use the `plot()` function to plot automatically several parts of the results. Calling the `plot()` function with the objects of class  `uGARCHfit` will enter the interactive mode which offers a selection of, this time, 12 plots:
+
+```
+ 1:   Series with 2 Conditional SD Superimposed     
+ 2:   Series with 1% VaR Limits                  
+ 3:   Conditional SD (vs |returns|)                 
+ 4:   ACF of Observations                        
+ 5:   ACF of Squared Observations                   
+ 6:   ACF of Absolute Observations               
+ 7:   Cross Correlation                             
+ 8:   Empirical Density of Standardized Residuals
+ 9:   QQ-Plot of Standardized Residuals            
+10:   ACF of Standardized Residuals              
+11:   ACF of Squared Standardized Residuals        
+12:   News-Impact Curve                    
+```
+
+First, let’s see all of them:
+```{r}
+for (i in 1:12) plot(k.ar1egarch21, which = i)
+```
+
+If you call `plot(kk.ar1egarch21)` in the console - remember to quit by pressing ESC before you continue!
+
+For now, most interesting for us are:
+```
+# 3:  Conditional SD (vs |returns|)
+# 11: ACF of Squared Standardized Residuals 
+# 12: News-Impact curve
+```
+
+Hence, let’s call the plot() function again:
+
+```{r}
+plot(k.ar1egarch21, which = 3)
+plot(k.ar1egarch21, which = 11)
+plot(k.ar1egarch21, which = 12)
+```
+
+## The GARCH-in-Mean model    
+
+Let's first define a model specification:
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "sGARCH", 
+                                         # sGARCH = standard GARCH
+                                         garchOrder = c(2, 1)),
+                   # mean equation - lets turn on the intercept term
+                   mean.model = list(armaOrder = c(1, 0), 
+                                     include.mean = TRUE,
+                       # we add an element to the mean equation,
+                       # which can be either stdev (archpow 1)
+                       # or var (archpow=2)
+                                     archm = TRUE, archpow = 1), 
+                   # assumed distribution of errors
+                   distribution.model = "norm")
+```
+
+Then, we can estimate the model:
+```{r}
+k.ar1garchm21 <- ugarchfit(spec = spec, 
+                           data = SP500$r)
+```
+
+Let's examine the results:
+```{r}
+k.ar1garchm21
+```
+
+The `mu` parameter is not significant - lets remove it from the model.
+```{r}
+spec <- 
+  ugarchspec(# variance equation
+    variance.model = list(model = "sGARCH", 
+                          # sGARCH = standard GARCH
+                          garchOrder = c(2, 1)),
+    # mean equation - lets turn on the intercept term
+    mean.model = list(armaOrder = c(1, 0), 
+                      include.mean = FALSE,
+                      # we add an element to the mean equation,
+                      # which can be either stdev (archpow 1)
+                      # or var (archpow=2)
+                      archm = TRUE, archpow = 1), 
+    # assumed distribution of errors
+    distribution.model = "norm")
+```
+
+Model estimation:
+```{r}
+k.ar1garchm21 <- ugarchfit(spec = spec, 
+                           data = SP500$r)
+```
+
+Model summary:
+```{r}
+k.ar1garchm21
+```
+
+Is the estimate of the archm parameter significantly positive? 
+
+The answer is **no** when robust standard errors are applied, so we **do not** find any evidence of risk premium in the model.
+
+## The GARCH-t model          
+
+Let's see whether conditional distribution of the error term can be better described by the t-Student distribution.
+
+Let's first define a model specification:
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "sGARCH", 
+                                         garchOrder = c(2, 1)),
+                   # mean equation
+                   mean.model = list(armaOrder = c(1, 0), 
+                                     include.mean = TRUE), 
+                   # assumed distribution of errors
+                   distribution.model = "std") # std = t-Student
+```
+
+Then, we estimate the model:
+```{r}
+k.ar1garcht21 <- ugarchfit(spec = spec, 
+                           data = SP500$r)
+```
+
+Model summary:
+```{r}
+k.ar1garcht21
+```
+
+The `shape` paramters denotes the number of degrees of freedom for the t-Student distribution. In this case it equals to `r k.ar1garcht21@model$pars["shape", 1] %>% round(3)`.
+
+One more thing! The conditional variance equation seems to be incomplete (see Ljung-Box Test on Standardized Squared Residuals!). On the other hand ARCH tests do NOT show any problem with the conditional variance equation.
+
+```{r}
+plot(k.ar1garcht21, which = 11)
+```
+
+Plot 11 shows significance of 1st lag!
+
+It is not clear if t distribution is better than normal distribution.
+
+We will compare the information criteria later.
+
+All the above elements of themodel can be combined into one model.
+
+## The EGARCH in mean-t model          
+
+Let's first define the model specification:
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "eGARCH", 
+                                         garchOrder = c(2, 1)),
+                   # mean equation
+                   mean.model = list(armaOrder = c(1, 0), 
+                                     include.mean = TRUE,
+                                     archm = TRUE, archpow = 1), 
+                   # assumed distribution of errors
+                   distribution.model = "std") # std = t-Student
+```
+
+Now, we estimate the model:
+```{r}
+k.ar1egarchmt21 <- ugarchfit(spec = spec, 
+                             data = SP500$r)
+```
+
+The model summary:
+```{r}
+k.ar1egarchmt21
+```
+
+Now it looks better! The `alpha1` and `shape` parameters are significant, while the `archm` is not.
+
+No further extensions of the mean and conditional variance equations are needed.
+
+Lets keep this specification as a final one. We will save its specification for later prediction as a new object:
+```{r}
+specFinal <- spec
+```
+
+Let's also remind the results the AR(5)-GARCH(2,1) model estimated last time. We will reestimate it with the `ugarchfit()` function. 
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "sGARCH", 
+                                         garchOrder = c(2, 1)),
+                   mean.model = list(armaOrder = c(5, 0), 
+                                     include.mean = TRUE), 
+                   distribution.model = "norm")
+k.ar5garch21 <- ugarchfit(spec = spec, 
+                          data = SP500$r)
+```
+
+Model summary:
+```{r}
+k.ar5garch21
+```
+
+The AR3 and AR4 paramters are not significatnt. Hence, we can fix their values at 0.
+```{r}
+spec <- ugarchspec(# variance equation
+                   variance.model = list(model = "sGARCH", 
+                                         garchOrder = c(2, 1)),
+                   mean.model = list(armaOrder = c(5,0), 
+                                     include.mean = TRUE), 
+                   distribution.model = "norm",
+                   # you need to use correct parameter names
+                   fixed.pars = list(ar3 = 0, ar4 = 0))
+k.ar5garch21_2 <- ugarchfit(spec = spec, 
+                            data = SP500$r)
+```
+
+Model summary:
+```{r}
+k.ar5garch21_2
+```
+
+Now, let's compare information criteria for all models:
+```{r}
+compare_ICs_ugarchfit(c("k.ar5garch21",
+                        "k.ar5garch21_2",
+                        "k.ar5egarch21",
+                        "k.ar1egarch21", 
+                        "k.ar1garchm21", 
+                        "k.ar1garcht21", 
+                        "k.ar1egarchmt21"))
+```
+
+All criteria indicate that AR-EGARCH-in-mean-t is the best model here.
+
+
+# Predictions with GARCH models
+
+Lets estimate a model on a shorter sample
+```{r}
+tail(SP500, 10)
+```
+
+Lets put aside last 6 observations:
+```{r}
+SP500.short <- SP500["/2019-04-26",]
+tail(SP500.short)
+```
+
+Now, we reestimate the final model `k.ar1egarchmt21` using the `specFinal` object:
+```{r}
+k.ar1egarchmt21.short <- ugarchfit(spec = specFinal,
+                                   data = SP500.short$r)
+```
+
+The prediction is made with the `ugarchforecast()` function:
+```{r}
+r.forecast <- ugarchforecast(k.ar1egarchmt21.short,
+                             n.ahead = 6)
+```
+
+Let's examine the resulting object:
+```{r}
+r.forecast
+str(r.forecast)
+```
+
+Forecasts from the mean equation (for returns) are located in:
+```{r}
+r.forecast@forecast$seriesFor
+```
+
+Forecasts from the variance equation (for standard deviation of returns) are located in:
+```{r}
+r.forecast@forecast$sigmaFor
+```
+
+How to turn forecasted returns into a forecasted price?
+Since:
+$$r = \Delta \log P_t = \log P_t - \log P_{t-1} = \log ( P_{t}/ P_{t-1})$$
+therefore:
+$$P_{t} = P_{t-1} e^r$$
+
+```{r}
+SP500.forecast <- rep(NA, 6)
+```
+
+Forecast for the first period refers to the last real observation from shorter sample:
+```{r}
+SP500.forecast[1] <- tail(SP500.short$SP500, 1) * exp(r.forecast@forecast$seriesFor[1])
+for (i in 2:6) {
+  SP500.forecast[i] <- SP500.forecast[i-1] * exp(r.forecast@forecast$seriesFor[i])
+}
+SP500.forecast
+```
+
+Now, let's convert it to the `xts` object:
+```{r}
+SP500.forecast <- xts(SP500.forecast, 
+                      tail(index(SP500), 6))
+names(SP500.forecast) <- "SP500_fore"
+```
+
+And finally, we can merge it with original data
+```{r}
+SP500 <- merge(SP500, SP500.forecast)
+```
+
+Plot of returns predictions:
+```{r}
+plot(SP500["2019-04/", c("SP500", "SP500_fore")], 
+     major.ticks = "weeks", 
+     grid.ticks.on = "weeks",
+     grid.ticks.lty = 3,
+     main = "6 day forecast of SP500",
+     col = c("black", "blue"))
+```
+
+
+# Exercises 12
+Download a selected time series from Yahoo! Finance and calculate returns for a selected period.
+
+## Exercise 12.1
+Examine the existence of:
+
+1. asymmetry in the conditional variance function (EGARCH),
+2. risk premium in the log-residuals (GARCH-m),
+3. t-Student distribution as an alternative to normal distribution of the error term (GARCH-t).
+
+## Exercise 12.2
+Find out which model is the best and use it to forecast a mean of the series for the next 5 periods.
+
+  
+
+

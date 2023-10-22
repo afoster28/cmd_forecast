@@ -1,0 +1,405 @@
+---
+title: "Time Series Analysis Spring 2023"
+subtitle: "12. Applications of GARCH Models - estimating Value at Risk"
+author: "Maciej Świtała"
+date: "18/05/2023"
+output: 
+  html_document:
+    theme: spacelab
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo    = TRUE, 
+                      cache   = TRUE,
+                      message = FALSE, 
+                      warning = FALSE)
+options(scipen = 10)
+```
+
+# Packages and data
+```{r cache = F}
+library(tidyverse)
+library(xts)     # xts objects
+library(fBasics) # basicStats()
+library(tseries) # jarque.bera.test()
+library(car)     # durbinWatsonTest()
+library(FinTS)   # ArchTest()
+library(fGarch)  # garchFit()
+library(rugarch) # e.g. ugarchfit()
+```
+
+Introduction to the rugarch package:
+
+* http://cran.r-project.org/web/packages/rugarch/vignettes/Introduction_to_the_rugarch_package.pdf
+
+# Estimating Value-at Risk
+
+This example is based on the paper: 
+
+* Engle (2001) GARCH 101: The Use of ARCH/GARCH Models in Applied Econometrics
+* http://stat.wharton.upenn.edu/~steele/Courses/434/434Context/GARCH/garch101(ENGLE).pdf
+
+First, let's download the data from the `csv` file.
+```{r}
+NASDAQ <- read.csv("data/ndq_d.csv",
+                   header = TRUE,
+                   sep = ",",
+                   dec = ".",
+                   stringsAsFactors = F)
+```
+
+Verification of the structure.
+```{r}
+str(NASDAQ)
+NASDAQ$Date <- as.Date(NASDAQ$Date)
+NASDAQ <- NASDAQ[, c("Date", "Close")]
+colnames(NASDAQ) <- c("Date", "NASDAQ")
+```
+
+Adding log-returns.
+```{r}
+NASDAQ$r <- diff.xts(log(NASDAQ$NASDAQ))
+```
+
+Removing observations before 1990-03-23.
+```{r}
+NASDAQ <- NASDAQ[as.Date("1990-03-23") <= NASDAQ$Date, ]
+```
+
+Adding current number of observation.
+```{r}
+NASDAQ$obs <- 1:length(NASDAQ$NASDAQ)
+```
+
+Verification of the structure.
+```{r}
+str(NASDAQ)
+head(NASDAQ, n = 10)
+tail(NASDAQ, n = 10)
+```
+
+Pot of quotations and returns.
+```{r}
+par(mfrow = c(2, 1))
+plot(NASDAQ$Date, NASDAQ$r,
+     type = "l", col = "red", lwd = 1,
+     main = "NASDAQ returns")
+plot(NASDAQ$Date, NASDAQ$NASDAQ,
+     type = "l", col = "black", lwd = 1,
+     main = "NASDAQ quotes")
+par(mfrow = c(1, 1))
+```
+
+Plot of ACF for returns 
+```{r}
+acf(NASDAQ$r, lag.max = 36, na.action = na.pass,
+    col = "darkblue", lwd = 7,
+    main = "ACF of NASDAQ returns")
+acf(NASDAQ$r, lag.max = 36, na.action = na.pass,
+     ylim = c(-0.1, 0.1), # we rescale the vertical axis
+     col = "darkblue", lwd = 7,
+     main = "ACF of NASDAQ returns")
+```
+
+Based on the ACF analysis for NASDAQ returns, we can say that there is - to some extent - an autoregressive relationship among returns. 
+
+Plot of ACF for **squared returns**.
+```{r}
+acf(NASDAQ$r^2, lag.max = 100, na.action = na.pass,
+    col = "darkblue", lwd = 7,
+    main = "ACF of NASDAQ squared returns")
+acf(NASDAQ$r^2, lag.max = 100, na.action = na.pass,
+    ylim = c(0, 0.5), # we rescale the vertical axis
+    col = "darkblue", lwd = 7,
+    main = "ACF of NASDAQ squared returns")
+```
+
+Plot of ACF for squares of NASDAQ returns shows a clear autoregressive relationship among them, which allows to conclude that ARCH effects are present in the log-returns. We can verify a formal hypothesis about this.
+
+Testing for ARCH effects.
+```{r}
+ArchTest(NASDAQ$r, lags = 5)
+durbinWatsonTest(lm(NASDAQ$r^2 ~ 1),
+                 max.lag = 5) # first 5 lags
+```
+
+Do returns come from normal distribution? 
+```{r}
+basicStats(NASDAQ$r)
+hist(NASDAQ$r, prob = T, breaks = 40)
+curve(dnorm(x, mean = mean(NASDAQ$r, na.rm = T),
+            sd  = sd(NASDAQ$r, na.rm = T)),
+            col = "darkblue", lwd = 2, add = TRUE)
+
+jarque.bera.test(na.omit(NASDAQ$r))
+durbinWatsonTest(lm(NASDAQ$r ~ 1),
+                 max.lag = 5) # first 5 lags
+```
+
+Removing observations before `1990-03-23` and after `2000-03-23`.
+```{r}
+NASDAQ2 <- NASDAQ[NASDAQ$Date <= as.Date("2000-03-23"), ]
+NASDAQ2 <- NASDAQ2[as.Date("1990-03-23") <= NASDAQ2$Date, ]
+```
+
+Plots fo quotations and returns.
+```{r}
+par(mfrow = c(2, 1))
+plot(NASDAQ2$Date, NASDAQ2$NASDAQ,
+     type = 'l', lwd = 1, col = "blue",
+     main = 'NASDAQ quotes')
+plot(NASDAQ2$Date, NASDAQ2$r,
+     type = 'l', lwd = 1, col = "red" ,
+     main = "NASDAQ returns")
+par(mfrow = c(1, 1))
+```
+
+Standardization of returns.
+```{r}
+NASDAQ2$rstd <- (NASDAQ2$r - mean(NASDAQ2$r, na.rm = T)) /
+    sd(NASDAQ2$r ,na.rm = T)
+tail(NASDAQ2)
+```
+
+Descriptive statistics of standardized returns .
+```{r}
+basicStats(NASDAQ2$rstd)
+```
+
+1% empirical quantile
+```{r}
+q01 <- quantile(NASDAQ2$rstd, 0.01, na.rm = T)
+q01
+```
+
+For comparison: 1% quantile of standard normal distribution
+```{r}
+qnorm(0.01, 0, 1)
+```
+
+What are the conclusions?
+
+Estimating the GARCH(1,1) model.
+```{r}
+spec <- 
+  ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+             mean.model = list(armaOrder = c(0, 0), include.mean = T),
+             distribution.model = "norm")
+nasdaq2.garch11 <- ugarchfit(spec = spec, data = na.omit(NASDAQ2$r))
+```
+
+Plots
+```{r}
+plot(nasdaq2.garch11, which = 10)
+plot(nasdaq2.garch11, which = 11)
+```
+
+# VaR in the IN-SAMPLE period
+
+Structure of the new object.
+```{r}
+str(nasdaq2.garch11)
+head(nasdaq2.garch11@fit$sigma)
+```
+
+Calculating value-at-risk (VaR).
+```{r}
+NASDAQ2$VaR <- q01 * nasdaq2.garch11@fit$sigma
+tail(NASDAQ2)
+```
+
+Plot of returns vs value-at-risk.
+```{r}
+plot(NASDAQ2$Date, NASDAQ2$r, 
+     col = "red", lwd = 1, type = 'l', 
+     ylim = c(-0.1, 0.1))
+abline(h = 0, lty = 2)
+lines(NASDAQ2$Date, NASDAQ2$VaR, type = 'l', col = "green")
+```
+
+In how many days losses were higher than the assumed value-at-risk?
+```{r}
+sum(NASDAQ2$r < NASDAQ2$VaR) / length(NASDAQ2$VaR)
+```
+
+Let's limit the sample to the last year only and compare the results.
+```{r}
+NASDAQ3 <- NASDAQ[NASDAQ$Date <= as.Date("2000-03-23"), ]
+NASDAQ3 <- NASDAQ3[as.Date("1999-03-23") <= NASDAQ3$Date, ]
+NASDAQ3$rstd <- 
+  (NASDAQ3$r - mean(NASDAQ3$r, na.rm = T)) / sd(NASDAQ3$r, na.rm = T)
+q01  <- quantile(NASDAQ3$rstd, 0.01, na.rm = T)
+spec <- 
+  ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+             mean.model = list(armaOrder = c(0, 0), include.mean = T),
+             distribution.model = "norm")
+nasdaq3.garch11 <- ugarchfit(spec = spec, data = na.omit(NASDAQ3$r))
+NASDAQ3$VaR     <- q01 * nasdaq3.garch11@fit$sigma
+tail(NASDAQ3)
+plot(NASDAQ3$Date, NASDAQ3$r, col = "red",
+     lwd = 1, type = 'l', ylim = c(-0.1, 0.1))
+abline(h = 0, lty = 2)
+lines(NASDAQ3$Date, NASDAQ3$VaR, type = 'l', col = "green")
+sum(NASDAQ3$r < NASDAQ3$VaR) / length(NASDAQ3$VaR)
+```
+
+What are the conclusions?
+
+# VaR in the OUT-OF-SAMPLE period
+
+Plot of conditional standard deviation and its on-day ahead prediction.
+```{r}
+plot(ugarchforecast(nasdaq2.garch11, n.ahead = 1), which = 3)
+```
+
+Plot of conditional standard deviation forecasts in the long run.
+```{r}
+plot(ugarchforecast(nasdaq2.garch11, n.ahead = 200), which = 3)
+```
+
+We can combine them with the in-sample estimation of conditional standard deviation
+```{r}
+sigma.forecast.longrun <- ugarchforecast(nasdaq2.garch11, n.ahead = 500)
+unconditional_sigma <- 
+  sqrt(
+    nasdaq2.garch11@model$pars["omega", 1] / 
+      (1 - 
+         nasdaq2.garch11@model$pars["alpha1", 1] -
+         nasdaq2.garch11@model$pars["beta1", 1]))
+plot(
+  c(as.numeric(nasdaq2.garch11@fit$sigma),
+    as.numeric(sigma.forecast.longrun@forecast$sigmaFor)),
+  type = "l",
+  ylab = "sigma")
+abline(h = unconditional_sigma, col = "red")
+```
+
+Yet a better idea is to annualize all of these values. 
+```{r}
+plot(
+  c(as.numeric(nasdaq2.garch11@fit$sigma * sqrt(252)),
+    as.numeric(sigma.forecast.longrun@forecast$sigmaFor * sqrt(252))),
+  type = "l",
+  ylab = "sigma annualized")
+abline(h = unconditional_sigma * sqrt(252), col = "red")
+```
+
+We can see that maximum value of estimated conditional standard deviation (sigma) was `r (max(nasdaq2.garch11@fit$sigma) * sqrt(252)) %>% scales::label_percent(accuracy = 0.1)(.)` annualized, while its long term uncoditional level was `r (unconditional_sigma * sqrt(252)) %>% scales::label_percent(accuracy = 0.1)(.)` annualized.
+
+Let's go back to sigma in daily scale and generate one-day ahead prediction of conditional variance.
+```{r}
+sigma.forecast <- ugarchforecast(nasdaq2.garch11, n.ahead = 1)
+```
+
+Structure of the new object.
+```{r}
+str(sigma.forecast)
+str(sigma.forecast@forecast)
+sigma.forecast@forecast$sigmaFor
+```
+
+Since it is a list cointaining one element (data.frame object), we have to extract it:
+```{r}
+sigma.forecast2 <- sigma.forecast@forecast$sigmaFor[1, 1]
+```
+
+We calculate 1-day head forecast of VaR:
+```{r}
+q01 * sigma.forecast2
+```
+
+Now, the loop below calculates predictions of VaR for the whole **OUT-OF-SAMPLE** period
+```{r}
+start   <- NASDAQ$obs[NASDAQ$Date == as.Date("2000-03-24")]
+finish  <- NASDAQ$obs[NASDAQ$Date == as.Date("2001-03-23")]
+NASDAQ4 <- NASDAQ[start:finish, ]
+VaR <- rep(NA, times = finish - start + 1)
+
+mu     <- rep(NA, times = finish - start + 1)
+omega  <- rep(NA, times = finish - start + 1)
+alpha1 <- rep(NA, times = finish - start + 1)
+beta1  <- rep(NA, times = finish - start + 1)
+```
+
+Calculation lasts for ~90-120 seconds:
+```{r}
+time1 <- Sys.time()
+for (k in start:finish) {
+    tmp.data <- NASDAQ[NASDAQ$obs <= (k - 1), ]
+    tmp.data <- tmp.data[as.Date("1990-03-23") <= tmp.data$Date, ]
+    tmp.data$rstd <- 
+      (tmp.data$r - mean(tmp.data$r, na.rm = T)) / sd(tmp.data$r, na.rm = T)
+    q01  <- quantile(tmp.data$rstd, 0.01, na.rm = T)
+    spec <- 
+      ugarchspec(variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+                 mean.model     = list(armaOrder = c(0, 0), include.mean = T),
+                 distribution.model = "norm")
+    tmp.garch11           <- ugarchfit(spec = spec, data = na.omit(tmp.data$r))
+    sigma.forecast        <- ugarchforecast(tmp.garch11, n.ahead = 1)
+    sigma.forecast2       <- sigma.forecast@forecast$sigmaFor[1, 1]
+    VaR[k - start + 1]    <- q01 * sigma.forecast2
+    mu[k - start + 1]     <- tmp.garch11@fit$coef[1]
+    omega[k - start + 1]  <- tmp.garch11@fit$coef[2]
+    alpha1[k - start + 1] <- tmp.garch11@fit$coef[3]
+    beta1[k - start + 1]  <- tmp.garch11@fit$coef[4]
+  }
+time2 <- Sys.time()
+time2 - time1
+```
+
+Adding VaR values to the data.frame objects.
+```{r}
+NASDAQ4$VaR <- VaR
+```
+
+Verification of the first and last observations .
+```{r}
+head(NASDAQ4)
+tail(NASDAQ4)
+```
+
+Plot of returns vs. VaR in the **OUT-OF-SAMPLE** period
+```{r}
+plot(NASDAQ4$Date, NASDAQ4$r, col = "red", lwd = 1, type = 'l',
+     ylim = c(-0.20, 0.20))
+abline(h = 0, lty = 2)
+lines(NASDAQ4$Date, NASDAQ4$VaR, type = 'l', col = "green")
+```
+
+In how many days losses were higher than the assumed VaR? 
+```{r}
+sum(NASDAQ4$r < NASDAQ4$VaR) / length(NASDAQ4$VaR)
+```
+
+
+# Exercise 13
+
+## Exercise 13.1
+
+Build a portfolio consisting of three financial assets. For simplicity, assume that at the beginning of each trading day weights are the same (for example: 50%, 30%, 20%). Use GARCH(1,1) in rolling approach to estimate VaR in the out-of-sample period.
+
+## Exercise 13.2
+
+In the example above: instead of GARCH(1,1) use EGARCH(1,1).
+How will that affect the out-of-sample VaR estimates?
+
+## Exercise 13.3
+
+In the example above: to calculate 1% empirical quantile, perform standardization of residuals using the their conditional standard deviation instead of unconditional # standard deviation. How will that affect the out-of-sample VaR estimates?
+
+## Exercise 13.4
+
+In the example above: instead of 1% empirical quantile, use 1% quantile of standard normal distribution, which is qnorm(0.01) = -2.326348. How will that affect the out-of-sample VaR estimates?
+
+## Exercise 13.5 (*)
+
+In the example above: instead of the GARCH(1,1) model, to estimate 1% out-of-sample VaR use 1% quantile of standard normal distribution and as the volatility prediction apply unconditional standard deviation of returns based on the rolling sample of last 21 (or 63 or 126) historical trading days. How will that affect the out-of-sample VaR estimates?
+
+
+
+
