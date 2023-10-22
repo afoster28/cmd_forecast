@@ -42,15 +42,32 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 
 ## Schedule
 
-### 08/10/23
-
-- Collect crude oil time series
-- Set up git repo
-- Set up core infra, ensuring reproducibility
-- Perform basic data cleaning & feature engineering
+### 22/10/23
+- Consider fallback treatment for log returns when asset prices are negative
+- Feature engineering
+- Complete basic stats section: density plot, JB test, Arch test, etc.
+- Interpret stats
 - Split into train-test
 - Implement the most basic GARCH
-- Describe additional use case of prediction: investment strategies
+
+### 08/10/23-22/10/23
+
+- Described additional use case of prediction: investment strategies
+- Collected reference material
+- Set up git repo
+- Set up core infra, ensuring reproducibility
+- Stored all relevant python libraries with corresponding versions in the requirements list, ensuring reproducibility
+- Centralised tickers in text file to avoid hard-coding these in code and to have an independent source file
+- Collected WTI, Brent & HH time series and set up semi-automatic flow using FRED API
+- Replaced monthly HH series with daily
+- Removed TTF as the only frequency available was monthly
+- Tested venv usability
+- High level view of data
+- Generated price plots
+- Calculated log returns
+- Performed basic data cleaning: replaced nulls throughout the series corresponding to bank holidays with the last non-null values available, removed starting null returns
+- Temporarily reduced observations to a limited time period for faster data processing prior to modelling
+- Initial implementation of ACFs and basic statistics
 
 ### Up to 08/10/23
 
