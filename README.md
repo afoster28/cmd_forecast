@@ -42,13 +42,23 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 
 ## Schedule
 
-### 22/10/23
-- Consider fallback treatment for log returns when asset prices are negative
+### To do
+
 - Feature engineering
-- Complete basic stats section: density plot, JB test, Arch test, etc.
-- Interpret stats
-- Split into train-test
-- Implement the most basic GARCH
+- Split into train-test and run forecast
+- Improve model specification iteratively
+- Improve modularity to be able to run the model under different parameters
+- Build systematic trading strategies incorporating the forecast
+- Introduce cross validation and extend to other models
+- Consider fallback treatment for log returns when asset prices are negative
+
+### 22/10/23-05/11/23
+- Completed basic stats section: density plots, comparison vs normal distribution, JB test, Arch test, etc.
+- Interpreted descriptive stats: leptokurtosis, negative skew, fat tails, arch effects
+- Researched GARCH (and supporting stats) implementation in Python and relevant packages
+- Implemented basic GARCH(1,1) with and without mean eq constant
+- Calculated LB test, information criteria and ACFs on GARCH results
+- Interpreted model stats: statistically significant coefficients, no further autocorrelation of squared standardised residuals, conditional variance eq functional form good based on ACF, mean eq functional form to be modified potentially based on ACF
 
 ### 08/10/23-22/10/23
 
