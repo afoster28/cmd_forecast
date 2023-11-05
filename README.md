@@ -45,7 +45,7 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 ### To do
 
 - Feature engineering
-- Split into train-test and run forecast
+- Run forecast on test set
 - Improve model specification iteratively
 - Improve modularity to be able to run the model under different parameters
 - Build systematic trading strategies incorporating the forecast
@@ -56,6 +56,7 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 - Completed basic stats section: density plots, comparison vs normal distribution, JB test, Arch test, etc.
 - Interpreted descriptive stats: leptokurtosis, negative skew, fat tails, arch effects
 - Researched GARCH (and supporting stats) implementation in Python and relevant packages
+- Split into basic 90/10 train/test split for the time being
 - Implemented basic GARCH(1,1) with and without mean eq constant
 - Calculated LB test, information criteria and ACFs on GARCH results
 - Interpreted model stats: statistically significant coefficients, no further autocorrelation of squared standardised residuals, conditional variance eq functional form good based on ACF, mean eq functional form to be modified potentially based on ACF
