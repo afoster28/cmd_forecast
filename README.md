@@ -55,6 +55,7 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 - Debugged forecast issue
 - Ran forecast on test set
 - Cross-checked python mean equation and conditional variance equation outputs with equivalents in R
+- Cross-checked outputs with simpler equity model
 - Combined train, test and forecast data into one dataframe
 - Visualised mean and conditional variance outputs
 
