@@ -45,12 +45,18 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 ### To do
 
 - Feature engineering
-- Run forecast on test set
 - Improve model specification iteratively
 - Improve modularity to be able to run the model under different parameters
-- Build systematic trading strategies incorporating the forecast
+- Build (mean reversion) systematic trading strategies incorporating the forecast
 - Introduce cross validation and extend to other models
 - Consider fallback treatment for log returns when asset prices are negative
+
+### 05/11/23-19/11/23
+- Debugged forecast issue
+- Ran forecast on test set
+- Cross-checked python mean equation and conditional variance equation outputs with equivalents in R
+- Combined train, test and forecast data into one dataframe
+- Visualised mean and conditional variance outputs
 
 ### 22/10/23-05/11/23
 - Completed basic stats section: density plots, comparison vs normal distribution, JB test, Arch test, etc.
