@@ -44,12 +44,20 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 
 ### To do
 
+- Extend to even more GARCH variants (GJR-GARCH, TARCH)
+- Check whether daily re-evaluation of model makes more sense instead of using predictions based on data up to the end of the train period
+- Evaluate model performance comparing to test set
 - Feature engineering
-- Improve model specification iteratively
-- Improve modularity to be able to run the model under different parameters
-- Build (mean reversion) systematic trading strategies incorporating the forecast
 - Introduce cross validation and extend to other models
 - Consider fallback treatment for log returns when asset prices are negative
+
+### 19/11/23-03/12/23
+- Improved model specification iteratively
+- Improved modularity to be able to run the model under different parameters (GARCH11, GARCH12, GARCH21, AR1-GARCH11, AR2-GARCH11, AR12-GARCH11)
+- Visualised train vs prediction vs test
+- Fixed test plot to cover entire test period
+- Built a momentum systematic trading strategy incorporating the forecast of AR2-GARCH11: position of 1 whenever predicted return > 0, -1 otherwise, amplified by a scalar of 2 whenever predicted vol > last observed vol
+- Calculated and plotted P&L for test period
 
 ### 05/11/23-19/11/23
 - Debugged forecast issue
