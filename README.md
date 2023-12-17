@@ -45,11 +45,15 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 ### To do
 
 - Extend to even more GARCH variants (GJR-GARCH, TARCH)
-- Check whether daily re-evaluation of model makes more sense instead of using predictions based on data up to the end of the train period
+- Extend to a more sophisticated modelling approach
+- Roll the model into the test priod to obtain more accurate short-term forecasts
 - Evaluate model performance comparing to test set
-- Feature engineering
-- Introduce cross validation and extend to other models
-- Consider fallback treatment for log returns when asset prices are negative
+- Consider fallback treatment for log returns when asset prices are negative: nearby (last available) value or arithmetic return for the dates affected
+
+### 03/12/23-17/12/23
+- Further research into more sophisticated GARCH replacements
+- Decided the model should continue to be rolled into the test period to obtain more accurate short-term forecasts that respond to latest asset moves to avoid long-term average convergence towards the end of the test set
+- Concluded that AIC & BIC become weaker in more complex versions of the model due to adding parameters and that the ACFs sometimes come out flat due to empty results in the process
 
 ### 19/11/23-03/12/23
 - Improved model specification iteratively
