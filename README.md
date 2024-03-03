@@ -67,12 +67,12 @@ _Finally, the two-factor Gabillon model may be employed. The model constructs a 
   - Little practical application to actual investment decisions that would be driven by both directional and magnitude forecasts
 - Proposal:
   - Already have basic framework for AR-GARCH forecast - mean equation and provides directional view (for positioning) and variance equation provides magnitude view (for leverage)
-  - Modify AR-GARCH to produce dynamic next period forecast using a rolling window instead of a static forecast of many periods to a) prevent convergence to the long-term mean and conditional variance and b) make the forecast more realistic as all data leading up to an observation would be used in practice for an trading decision
+  - Modify AR-GARCH to produce dynamic next period forecast using a rolling window instead of a static forecast of many periods to a) prevent convergence to the long-term mean and conditional variance and b) make the forecast more realistic as all data leading up to an observation could be used in practice for a trading decision
   - Run separate LSTM forecasts on asset price and volatility
-  - Choose commodity assets which are not frequently covered by the literature
+  - Choose commodity assets as these are not frequently covered by the literature
   - Create the following combinations of price-vol forecasts
     - AR-GARCH
-    - LSTM<sub>price</sub>-GARCH<sub>vol</sub>
+    - LSTM<sub>price</sub>-GARCH
     - AR-LSTM<sub>vol</sub>
     - LSTM<sub>price</sub>-LSTM<sub>vol</sub>
   - Evaluate in terms of at least RMSE and SR
