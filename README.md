@@ -34,11 +34,12 @@ LSTM is also used given its recent display of strong performance, including in f
 
 The output consists of price and volatility forecasts of each commodity, their application in momentum and mean-reversion trading strategies and evaluation metrics.
 
-## Scope Archive
+_
+### Archive
 
 Multivariate volatility and switching models may be considered.
 
-Finally, the two-factor Gabillon model may be employed. The model constructs a term structure of commodities founded in stochastic calculus with long and short-term price factors, representing the broader increase in commodity prices in line with economic growth and structural changes, as well as sudden gluts and shortages, respectively. Cost of carry and convenience yield are included to make the spot-future differential evident.
+Finally, the two-factor Gabillon model may be employed. The model constructs a term structure of commodities founded in stochastic calculus with long and short-term price factors, representing the broader increase in commodity prices in line with economic growth and structural changes, as well as sudden gluts and shortages, respectively. Cost of carry and convenience yield are included to make the spot-future differential evident._
 
 ## Schedule
 
