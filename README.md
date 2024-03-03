@@ -44,11 +44,40 @@ Contrarian and pair trading strategies will then be employed to make use of the 
 
 ### To do
 
-- Extend to even more GARCH variants (GJR-GARCH, TARCH)
-- Extend to a more sophisticated modelling approach
-- Roll the model into the test priod to obtain more accurate short-term forecasts
-- Evaluate model performance comparing to test set
+- Modify AR-GARCH to produce dynamic next period forecast using a rolling window instead of a static forecast of many periods
+- Run separate LSTM forecasts on asset price and volatility
 - Consider fallback treatment for log returns when asset prices are negative: nearby (last available) value or arithmetic return for the dates affected
+
+### 19/02/24-03/03/24
+- Further research and brainstorming on approach and modelling technique
+- Learning about LSTM
+  - LSTMs maintain the chain-like structure of neural network and update layer
+  - They handle long-term dependencies better due to the cell state
+  - An input (sigmoid) layer is the first gate that decides how much information from the cell state should be passed through
+  - A vector of candidate values is passed through to the cell state following multiplication by a sigmoid function
+  - An output layer combines information from the cell state with another sigmoid function
+- Findings:
+  - ML solutions to time series forecasting point to RNNs, particularly LSTM
+  - LSTM can be applied to numeric time series
+  - Several papers on LSTM-GARCH and LSTM-AR ensemble models
+  - These typically involve modifying LSTM neural network layers e.g. with GARCH forecasts
+  - They focus primarily on volatility forecast in such cases
+  - Mainly equity and crypto markets
+  - Little practical application to actual investment decisions that would be driven by both directional and magnitude forecasts
+- Proposal:
+  - Already have basic framework for AR-GARCH forecast - mean equation and provides directional view (for positioning) and variance equation provides magnitude view (for leverage)
+  - Modify AR-GARCH to produce dynamic next period forecast using a rolling window instead of a static forecast of many periods to a) prevent convergence to the long-term mean and conditional variance and b) make the forecast more realistic as all data leading up to an observation would be used in practice for an trading decision
+  - Run separate LSTM forecasts on asset price and volatility
+  - Choose commodity assets which are not frequently covered by the literature
+  - Create the following combinations of price-vol forecasts
+    - AR-GARCH
+    - LSTM<sub>price</sub>-GARCH<sub>vol</sub>
+    - AR-LSTM<sub>vol</sub>
+    - LSTM<sub>price</sub>-LSTM<sub>vol</sub>
+  - Evaluate in terms of at least RMSE and SR
+
+### 18/12/23-18/02/24
+- On hold
 
 ### 03/12/23-17/12/23
 - Further research into more sophisticated GARCH replacements
